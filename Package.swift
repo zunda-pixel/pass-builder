@@ -41,6 +41,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-subprocess", from: "0.4.0"),
+        .package(url: "https://github.com/adam-fowler/swift-zip-archive", from: "0.7.0"),
         .package(url: "https://github.com/swiftlang/swift-syntax", "603.0.1"..<"605.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.6.1"),
         .package(url: "https://github.com/apple/swift-system", from: "1.6.4"),
@@ -57,6 +58,7 @@ let package = Package(
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "Subprocess", package: "swift-subprocess"),
+                .product(name: "ZipArchive", package: "swift-zip-archive"),
                 .product(name: "SystemPackage", package: "swift-system"),
                 .product(name: "X509", package: "swift-certificates"),
                 .product(name: "NIOSSL", package: "swift-nio-ssl"),

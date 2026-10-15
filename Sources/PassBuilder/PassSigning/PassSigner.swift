@@ -8,6 +8,7 @@
 //
 
 import PlatformFoundation
+import ZipArchive
 
 private let PKPassFileSuffix = "pkpass"
 
@@ -34,6 +35,46 @@ public struct PassSigner: Sendable {
     ) {
         self.passCertificate = passCertificate
         self.wwdrCertificate = wwdrCertificate
+    }
+
+    /// Creates a signed .pkpass archive entirely in memory.
+    ///
+    /// This avoids temporary directories and external zip executables. The returned
+    /// archive contains pass.json, assets, manifest.json, and the detached CMS signature.
+    public func signPassData(_ package: PassPackage) async throws -> Data {
+        let fileWrapper = try package.fileWrapper()
+        let manifestFile = try await InMemoryManifestGenerator().generateManifest(for: fileWrapper)
+        let signatureFile = try ManifestSignatureGenerator(
+            passCertificate: passCertificate,
+            wwdrCertificate: wwdrCertificate
+        ).generateSignature(for: manifestFile)
+
+        _ = fileWrapper.addFileWrapper(manifestFile)
+        _ = fileWrapper.addFileWrapper(signatureFile)
+
+        let writer = ZipArchiveWriter<ZipMemoryStorage<[UInt8]>>()
+        try Self.archiveContents(of: fileWrapper, prefix: "", into: writer)
+        return Data(try writer.finalizeBuffer())
+    }
+
+    private static func archiveContents(
+        of directory: FileWrapperContainer,
+        prefix: String,
+        into writer: ZipArchiveWriter<ZipMemoryStorage<[UInt8]>>
+    ) throws {
+        guard let children = directory.fileWrappers else { return }
+        for (name, child) in children.sorted(by: { $0.key < $1.key }) {
+            let path = prefix + name
+            if child.isDirectory {
+                try archiveContents(
+                    of: FileWrapperContainer(fileWrapper: child),
+                    prefix: path + "/",
+                    into: writer
+                )
+            } else if let data = child.regularFileContents {
+                try writer.writeFile(filename: path, contents: Array(data))
+            }
+        }
     }
 
     /// Signs the pass and writes the output to disk.
